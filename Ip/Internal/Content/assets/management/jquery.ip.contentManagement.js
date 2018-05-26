@@ -91,19 +91,15 @@
 
                     $widgetSwitches.first().click();
 
-                    $('.ipsAdminPanelWidgetButton')
-                        .on('dragstart', ipStartWidgetDrag)
-                        .on('dragstop', ipStopWidgetDrag);
 
-                    //$('.ipWidget').on('sortstart', ipStartWidgetDrag);
-                    $('.ipBlock .ipWidget')
+                    $('body')
                         .on('dragstart.ipContentManagement', ipStartWidgetDrag)
-                        .on('dragstop.ipContentManagement', ipStopWidgetDrag);
-                    $('body').on('ipWidgetReinit', function () {
-                        $('.ipBlock .ipWidget')
-                            .off('dragstart.ipContentManagement').on('dragstart.ipContentManagement', ipStartWidgetDrag)
-                            .off('dragstop.ipContentManagement').on('dragstop.ipContentManagement', ipStopWidgetDrag);
-                    })
+                        .on('dragstop.ipContentManagement', ipStopWidgetDrag)
+                        .on('ipWidgetReinit', function () {
+                            $('body')
+                                .off('dragstart.ipContentManagement').on('dragstart.ipContentManagement', ipStartWidgetDrag)
+                                .off('dragstop.ipContentManagement').on('dragstop.ipContentManagement', ipStopWidgetDrag);
+                        });
 
                     $('.ipsContentSave').on('click', function(e){$.proxy(methods.save, $this)(false)});
                     $('.ipsContentPublish').on('click', function(e){$.proxy(methods.save, $this)(true)});
@@ -269,345 +265,384 @@
             return;
         }
 
-        //drop side
-        var sidePlaceholders = new Array();
+        var html = '';
 
-        $('*:not(.ipsCol) > .ipBlock > .ipWidget').not(".ipWidget .ipWidget .ipWidget .ipWidget").not($(draggingElement)).each(function (key, value) {
-            //left placeholder
-            sidePlaceholders.push({
-                left: $(value).offset().left - 20,
-                top: $(value).offset().top + 1,
-                height: Math.max($(value).height() - 2, 10),
-                width: 20,
-                widgetId: $(value).data('widgetid'),
-                leftOrRight: 'left'
+        setTimeout(prepareSidePlaceholders, 20);
+
+        function prepareSidePlaceholders() {
+
+            html = '';
+
+            //drop side
+            var sidePlaceholders = new Array();
+
+            $('*:not(.ipsCol) > .ipBlock > .ipWidget').not(".ipWidget .ipWidget .ipWidget .ipWidget").not($(draggingElement)).each(function (key, value) {
+
+                //left placeholder
+                var $v = $(value);
+                sidePlaceholders.push({
+                    left: $v.offset().left - 20,
+                    top: $v.offset().top + 1,
+                    height: Math.max($v.height() - 2, 10),
+                    width: 20,
+                    widgetId: $v.data('widgetid'),
+                    leftOrRight: 'left'
+                });
+
+                //right placeholder
+                sidePlaceholders.push({
+                    left: $v.offset().left + $v.width(),
+                    top: $v.offset().top + 1,
+                    height: Math.max($v.height() - 2, 10),
+                    width: 20,
+                    widgetId: $v.data('widgetid'),
+                    leftOrRight: 'right'
+                });
             });
 
-            //right placeholder
-            sidePlaceholders.push({
-                left: $(value).offset().left + $(value).width(),
-                top: $(value).offset().top + 1,
-                height: Math.max($(value).height() - 2, 10),
-                width: 20,
-                widgetId: $(value).data('widgetid'),
-                leftOrRight: 'right'
+            $.each(sidePlaceholders, function (key, value) {
+                preparePlaceholder(value, 'ipAdminWidgetPlaceholderVertical', false);
             });
-        });
 
-        $.each(sidePlaceholders, function (key, value) {
-            var $droppable = $('<div class="ipsWidgetDropPlaceholder ipAdminWidgetPlaceholderVertical"><div class="ipsWidgetDropMarker _marker"></div></div>');
-            $('body').append($droppable);
-            $droppable.css('position', 'absolute');
-            $droppable.css('left', value.left + 'px');
-            $droppable.css('top', value.top + 'px');
-            $droppable.css('height', value.height + 'px');
-            $droppable.css('width', value.width + 'px');
-            $droppable.data('widgetId', value.widgetId);
-            $droppable.data('leftOrRight', value.leftOrRight);
-            $droppable.data('side', 1);
-            $droppable.find('.ipsWidgetDropMarker').height(value.height);
-            $droppable.find('.ipsWidgetDropMarker').css('marginLeft', Math.round(value.width / 2));
-        });
+            //createPlaceholders();
+            setTimeout(prepareColumnPlaceholders, 20);
+        }
 
-        //------------------------------------------------------
+        function prepareColumnPlaceholders() {
+            //------------------------------------------------------
 
-        var colsPlaceholders = new Array();
-        $.each($('.ipWidget-Columns'), function (widgetKey, columnsWidget) {
-            $.each($(columnsWidget).find('.ipsCol'), function (colKey, col) {
-                var $col = $(col);
-                var $prevBlock = $col.prev().find('.ipBlock');
-                var $block = $col.find('.ipBlock');
-                if (colKey != 0 && $block.offset() && $prevBlock.offset()) { //skip first col. Offset checking is just in case. If everything goes right, prev block should always exist.
-                    var space = $block.offset().left - ($prevBlock.offset().left + $prevBlock.width());
-                    //alert(space);
-                    colsPlaceholders.push({
-                        left: $col.find('.ipBlock').offset().left - space,
-                        top: $col.find('.ipBlock').offset().top + 1,
-                        height: Math.max($(columnsWidget).height() - 2, 10),
-                        width: space,
-                        widgetId: $(columnsWidget).data('widgetid'),
-                        position: colKey
-                    });
-                }
+            var colsPlaceholders = new Array();
+            $.each($('.ipWidget-Columns'), function (widgetKey, columnsWidget) {
+                var $columnsWidget = $(columnsWidget);
+                $.each($columnsWidget.find('.ipsCol'), function (colKey, col) {
+                    var $col = $(col);
+                    var $prevBlock = $col.prev().find('.ipBlock');
+                    var $block = $col.find('.ipBlock');
+                    if (colKey != 0 && $block.offset() && $prevBlock.offset()) { //skip first col. Offset checking is just in case. If everything goes right, prev block should always exist.
+                        var space = $block.offset().left - ($prevBlock.offset().left + $prevBlock.width());
+                        colsPlaceholders.push({
+                            left: $col.find('.ipBlock').offset().left - space,
+                            top: $col.find('.ipBlock').offset().top + 1,
+                            height: Math.max($columnsWidget.height() - 2, 10),
+                            width: space,
+                            widgetId: $columnsWidget.data('widgetid'),
+                            position: colKey
+                        });
+                    }
+                });
             });
-        });
 
-        $.each(colsPlaceholders, function (key, value) {
-            var $droppable = $('<div class="ipsWidgetDropPlaceholder ipAdminWidgetPlaceholderVertical"><div class="ipsWidgetDropMarker _marker"></div></div>');
-            $('body').append($droppable);
-            $droppable.css('position', 'absolute');
-            $droppable.css('left', value.left + 'px');
-            $droppable.css('top', value.top + 'px');
-            $droppable.css('height', value.height + 'px');
-            $droppable.css('width', value.width + 'px');
-            $droppable.data('widgetId', value.widgetId);
-            $droppable.data('newCol', 1);
-            $droppable.data('position', value.position);
-            $droppable.find('.ipsWidgetDropMarker').height(value.height);
-            $droppable.find('.ipsWidgetDropMarker').css('marginLeft', Math.round(value.width / 2));
-        });
+            $.each(colsPlaceholders, function (key, value) {
+                preparePlaceholder(value, 'ipAdminWidgetPlaceholderVertical', true);
+            });
 
-        //------------------------------------------------------
+            //createPlaceholders();
+            setTimeout(prepareHorizontalPlaceholders, 20);
+        }
 
-        //drop between the widgets horizontally
-        var horizontalPlaceholders = new Array();
-        $.each($('.ipBlock').not($(draggingElement).find('.ipBlock')), function (blockKey, block) {
-            var $widgets = $(block).find('> .ipWidget');
-            $.each($widgets, function (key, value) {
-                var $widget = $(value);
-                var newPlaceholder = {};
-                if ($widget.index() == 0) { //first widget
-                    var space = 15;
-                    //first placeholder
-                    newPlaceholder = {
-                        left: $widget.offset().left,
-                        top: $widget.offset().top - space,
-                        width: $widget.width(),
-                        blockName: $(block).data('ipBlock').name,
-                        position: 0,
-                        markerOffset: space/2
-                    };
+        function prepareHorizontalPlaceholders() {
 
-                    var widgetController = $widget.data('widgetController');
-                    if (!widgetController.splitParts) {
-                        widgetController.splitParts = function () {return new Array()};
-                    }
-                    if (widgetController.splitParts && widgetController.splitParts().length) {
-                        //middle of the first paragraph
-                        var $firstParagraph = widgetController.splitParts().first();
-                        newPlaceholder.height = $firstParagraph.offset().top + Math.round($firstParagraph.height() / 2) - newPlaceholder.top;
-                    } else {
-                        newPlaceholder.height = $widget.offset().top + ($widget.height() / 2) - newPlaceholder.top;
-                    }
-
-                    if ($widget.find(".ipBlock").length) { //if this is a columns widget, make a 3/4 space for dropping. Leave 1/4 for column placeholders
-                        newPlaceholder.height = space*3/4;
-                        newPlaceholder.markerOffset = space*3/4 / 2;
-                    }
-
-                    if ($widget.parent().closest('.ipWidget').find('.ipBlock').length && !$widget.find('.ipBlock').length) {//if this is first widget inside a column. Take 1/4 of space for placeholder
-                        var $aboveColumnsWidget = $widget.parent().closest('.ipWidget').prev();
-                        if ($aboveColumnsWidget.length) {
-                            space = $widget.offset().top - ($aboveColumnsWidget.offset().top + $aboveColumnsWidget.height());
-                            newPlaceholder.top = $widget.offset().top - space / 2;
-                            newPlaceholder.markerOffset = space / 2 / 2; //half of marker size
-                        } else {
-                            newPlaceholder.top = $widget.offset().top - space * 1 / 4;
-                            newPlaceholder.markerOffset = space * 1 / 4 / 2;
-                        }
+            //drop between the widgets horizontally
+            var horizontalPlaceholders = new Array();
+            $.each($('.ipBlock').not($(draggingElement).find('.ipBlock')), function (blockKey, block) {
+                var $widgets = $(block).find('> .ipWidget');
+                $.each($widgets, function (key, value) {
+                    var $widget = $(value);
+                    var newPlaceholder = {};
+                    if ($widget.index() == 0) { //first widget
+                        var space = 15;
+                        //first placeholder
+                        newPlaceholder = {
+                            left: $widget.offset().left,
+                            top: $widget.offset().top - space,
+                            width: $widget.width(),
+                            blockName: $(block).data('ipBlock').name,
+                            position: 0,
+                            markerOffset: space / 2
+                        };
 
                         var widgetController = $widget.data('widgetController');
                         if (!widgetController.splitParts) {
-                            widgetController.splitParts = function () {return new Array()};
+                            widgetController.splitParts = function () {
+                                return new Array()
+                            };
                         }
                         if (widgetController.splitParts && widgetController.splitParts().length) {
                             //middle of the first paragraph
                             var $firstParagraph = widgetController.splitParts().first();
                             newPlaceholder.height = $firstParagraph.offset().top + Math.round($firstParagraph.height() / 2) - newPlaceholder.top;
                         } else {
-                            //middle of the widget
                             newPlaceholder.height = $widget.offset().top + ($widget.height() / 2) - newPlaceholder.top;
                         }
-                    }
-                    horizontalPlaceholders.push(newPlaceholder);
-                } else {  //not first widget
-                    var $prevWidget = $widget.prev();
-                    var space = $widget.offset().top - ($prevWidget.offset().top + $prevWidget.height());
-                    //all up to the last placeholders
-                    newPlaceholder = {
-                        left: $prevWidget.offset().left,
-                        top: $prevWidget.offset().top + ($prevWidget.height() / 2),
-                        width: $widget.width(),
-                        blockName: $(block).data('ipBlock').name,
-                        position: $widget.index()
-                    };
-                    if ($prevWidget.find(".ipBlock").length) { //if above is columns widget
-                        newPlaceholder.top = $prevWidget.offset().top + $prevWidget.height() + space * 1 / 4; //the end of column widget
-                    }
 
-                    var prevWidgetController = $prevWidget.data('widgetController');
-                    if (!prevWidgetController.splitParts) {
-                        prevWidgetController.splitParts = function () {return new Array()};
-                    }
-                    if (prevWidgetController.splitParts() && prevWidgetController.splitParts().length) {
-                        //start placeholder from the middle of last paragraph
-                        var $lastParagraph = prevWidgetController.splitParts().last();
-                        newPlaceholder.top = $lastParagraph.offset().top + Math.round($lastParagraph.height() / 2)
-                    }
-
-                    var widgetController = $widget.data('widgetController');
-                    if (!widgetController.splitParts) {
-                        widgetController.splitParts = function () {return new Array()};
-                    }
-                    if (widgetController.splitParts() && widgetController.splitParts().length) {
-                        //placeholder touches center of first paragraph
-                        var $firstParagraph = widgetController.splitParts().first();
-                        newPlaceholder.height = $firstParagraph.offset().top - newPlaceholder.top + Math.round($firstParagraph.height() / 2);
-                    } else {
-                        //placeholder touches the center of the widget
-                        newPlaceholder.height = $widget.offset().top + ($widget.height() / 2) - newPlaceholder.top;
-                    }
-
-                    if ($widget.find(".ipBlock").length) {
-                        newPlaceholder.height = $widget.offset().top - newPlaceholder.top - (space / 2);
-                        newPlaceholder.markerOffset = newPlaceholder.height - 1 ;
-                    }
-
-                    newPlaceholder.markerOffset = ($prevWidget.offset().top + $prevWidget.height() + $widget.offset().top) / 2 - newPlaceholder.top;
-
-                    horizontalPlaceholders.push(newPlaceholder);
-                }
-
-                if ($widget.index() == $widgets.length - 1) {
-                    var space = 10;
-                    var lastPlaceholder = {
-                        left: $widget.offset().left,
-                        top: newPlaceholder.top + newPlaceholder.height + 1,
-                        height: $widget.height() / 2 + space,
-                        width: $widget.width(),
-                        markerOffset: $widget.height() / 2 + space / 2,
-                        blockName: $(block).data('ipBlock').name,
-                        position: $widget.index() + 1
-                    };
-
-                    var widgetController = $widget.data('widgetController');
-                    if (!widgetController.splitParts) {
-                        widgetController.splitParts = function () {return new Array()};
-                    }
-                    if (widgetController.splitParts && widgetController.splitParts().length) {
-                        //middle of the last paragraph
-                        var $lastParagraph = widgetController.splitParts().last();
-                        lastPlaceholder.top = $lastParagraph.offset().top + Math.round($lastParagraph.height() / 2);
-                        lastPlaceholder.height = Math.round($lastParagraph.height() / 2);
-                        lastPlaceholder.markerOffset = Math.round($lastParagraph.height() / 2) + space;
-                    }
-
-                    var $columnsWidget = $widget.parent().closest('.ipWidget');
-                    if ($columnsWidget.find('.ipBlock').length && !$widget.find(".ipBlock").length) {
-                        //we are last widget inside a column
-                        var columnsEnd = $columnsWidget.offset().top + $columnsWidget.height();
-                        if ($columnsWidget.next().length) {
-                            space = $columnsWidget.next().offset().top - columnsEnd;
+                        if ($widget.find(".ipBlock").length) { //if this is a columns widget, make a 3/4 space for dropping. Leave 1/4 for column placeholders
+                            newPlaceholder.height = space * 3 / 4;
+                            newPlaceholder.markerOffset = space * 3 / 4 / 2;
                         }
-                        lastPlaceholder.height = columnsEnd -  lastPlaceholder.top + space * 1 / 4;
-                        lastPlaceholder.markerOffset = lastPlaceholder.markerOffset - space * 1/4
+
+                        if ($widget.parent().closest('.ipWidget').find('.ipBlock').length && !$widget.find('.ipBlock').length) {//if this is first widget inside a column. Take 1/4 of space for placeholder
+                            var $aboveColumnsWidget = $widget.parent().closest('.ipWidget').prev();
+                            if ($aboveColumnsWidget.length) {
+                                space = $widget.offset().top - ($aboveColumnsWidget.offset().top + $aboveColumnsWidget.height());
+                                newPlaceholder.top = $widget.offset().top - space / 2;
+                                newPlaceholder.markerOffset = space / 2 / 2; //half of marker size
+                            } else {
+                                newPlaceholder.top = $widget.offset().top - space * 1 / 4;
+                                newPlaceholder.markerOffset = space * 1 / 4 / 2;
+                            }
+
+                            var widgetController = $widget.data('widgetController');
+                            if (!widgetController.splitParts) {
+                                widgetController.splitParts = function () {
+                                    return new Array()
+                                };
+                            }
+                            if (widgetController.splitParts && widgetController.splitParts().length) {
+                                //middle of the first paragraph
+                                var $firstParagraph = widgetController.splitParts().first();
+                                newPlaceholder.height = $firstParagraph.offset().top + Math.round($firstParagraph.height() / 2) - newPlaceholder.top;
+                            } else {
+                                //middle of the widget
+                                newPlaceholder.height = $widget.offset().top + ($widget.height() / 2) - newPlaceholder.top;
+                            }
+                        }
+                        horizontalPlaceholders.push(newPlaceholder);
+                    } else {  //not first widget
+                        var $prevWidget = $widget.prev();
+                        var space = $widget.offset().top - ($prevWidget.offset().top + $prevWidget.height());
+                        //all up to the last placeholders
+                        newPlaceholder = {
+                            left: $prevWidget.offset().left,
+                            top: $prevWidget.offset().top + ($prevWidget.height() / 2),
+                            width: $widget.width(),
+                            blockName: $(block).data('ipBlock').name,
+                            position: $widget.index()
+                        };
+                        if ($prevWidget.find(".ipBlock").length) { //if above is columns widget
+                            newPlaceholder.top = $prevWidget.offset().top + $prevWidget.height() + space * 1 / 4; //the end of column widget
+                        }
+
+                        var prevWidgetController = $prevWidget.data('widgetController');
+                        if (!prevWidgetController.splitParts) {
+                            prevWidgetController.splitParts = function () {
+                                return new Array()
+                            };
+                        }
+                        if (prevWidgetController.splitParts() && prevWidgetController.splitParts().length) {
+                            //start placeholder from the middle of last paragraph
+                            var $lastParagraph = prevWidgetController.splitParts().last();
+                            newPlaceholder.top = $lastParagraph.offset().top + Math.round($lastParagraph.height() / 2)
+                        }
+
+                        var widgetController = $widget.data('widgetController');
+                        if (!widgetController.splitParts) {
+                            widgetController.splitParts = function () {
+                                return new Array()
+                            };
+                        }
+                        if (widgetController.splitParts() && widgetController.splitParts().length) {
+                            //placeholder touches center of first paragraph
+                            var $firstParagraph = widgetController.splitParts().first();
+                            newPlaceholder.height = $firstParagraph.offset().top - newPlaceholder.top + Math.round($firstParagraph.height() / 2);
+                        } else {
+                            //placeholder touches the center of the widget
+                            newPlaceholder.height = $widget.offset().top + ($widget.height() / 2) - newPlaceholder.top;
+                        }
+
+                        if ($widget.find(".ipBlock").length) {
+                            newPlaceholder.height = $widget.offset().top - newPlaceholder.top - (space / 2);
+                            newPlaceholder.markerOffset = newPlaceholder.height - 1;
+                        }
+
+                        newPlaceholder.markerOffset = ($prevWidget.offset().top + $prevWidget.height() + $widget.offset().top) / 2 - newPlaceholder.top;
+
+                        horizontalPlaceholders.push(newPlaceholder);
                     }
 
-                    if ($widget.find(".ipBlock").length) {
-                        //if last widget has blocks inside (columns widget)
-                        var columnsEnd = $widget.offset().top + $widget.height();
-                        lastPlaceholder.height = space * 2;
-                        lastPlaceholder.top = columnsEnd + space * 1 / 4;
-                        lastPlaceholder.markerOffset = 5;
-                    }
+                    if ($widget.index() == $widgets.length - 1) {
+                        var space = 10;
+                        var lastPlaceholder = {
+                            left: $widget.offset().left,
+                            top: newPlaceholder.top + newPlaceholder.height + 1,
+                            height: $widget.height() / 2 + space,
+                            width: $widget.width(),
+                            markerOffset: $widget.height() / 2 + space / 2,
+                            blockName: $(block).data('ipBlock').name,
+                            position: $widget.index() + 1
+                        };
 
-                    horizontalPlaceholders.push(lastPlaceholder);
+                        var widgetController = $widget.data('widgetController');
+                        if (!widgetController.splitParts) {
+                            widgetController.splitParts = function () {
+                                return new Array()
+                            };
+                        }
+                        if (widgetController.splitParts && widgetController.splitParts().length) {
+                            //middle of the last paragraph
+                            var $lastParagraph = widgetController.splitParts().last();
+                            lastPlaceholder.top = $lastParagraph.offset().top + Math.round($lastParagraph.height() / 2);
+                            lastPlaceholder.height = Math.round($lastParagraph.height() / 2);
+                            lastPlaceholder.markerOffset = Math.round($lastParagraph.height() / 2) + space;
+                        }
+
+                        var $columnsWidget = $widget.parent().closest('.ipWidget');
+                        if ($columnsWidget.find('.ipBlock').length && !$widget.find(".ipBlock").length) {
+                            //we are last widget inside a column
+                            var columnsEnd = $columnsWidget.offset().top + $columnsWidget.height();
+                            if ($columnsWidget.next().length) {
+                                space = $columnsWidget.next().offset().top - columnsEnd;
+                            }
+                            lastPlaceholder.height = columnsEnd - lastPlaceholder.top + space * 1 / 4;
+                            lastPlaceholder.markerOffset = lastPlaceholder.markerOffset - space * 1 / 4
+                        }
+
+                        if ($widget.find(".ipBlock").length) {
+                            //if last widget has blocks inside (columns widget)
+                            var columnsEnd = $widget.offset().top + $widget.height();
+                            lastPlaceholder.height = space * 2;
+                            lastPlaceholder.top = columnsEnd + space * 1 / 4;
+                            lastPlaceholder.markerOffset = 5;
+                        }
+
+                        horizontalPlaceholders.push(lastPlaceholder);
+                    }
+                });
+
+                if ($(block).find('> .ipWidget').length == 0) { //empty block
+                    var $block = $(block);
+                    horizontalPlaceholders.push({
+                        left: $block.offset().left,
+                        top: $block.offset().top,
+                        height: $block.height(),
+                        width: $block.width(),
+                        markerOffset: $block.height() / 2,
+                        blockName: $block.data('ipBlock').name,
+                        position: 0
+                    });
                 }
             });
 
-            if ($(block).find('> .ipWidget').length == 0) { //empty block
-                var $block = $(block);
-                horizontalPlaceholders.push({
-                    left: $block.offset().left,
-                    top: $block.offset().top,
-                    height: $block.height(),
-                    width: $block.width(),
-                    markerOffset: $block.height() / 2,
-                    blockName: $block.data('ipBlock').name,
-                    position: 0
-                });
-            }
-        });
+            $.each(horizontalPlaceholders, function (key, value) {
+                preparePlaceholder(value, 'ipAdminWidgetPlaceholderHorizontal', false, true);
+            });
 
-        $.each(horizontalPlaceholders, function (key, value) {
-            var $droppable = $('<div class="ipsWidgetDropPlaceholder ipAdminWidgetPlaceholderHorizontal"><div class="ipsWidgetDropMarker _marker"></div></div>');
-            $('body').append($droppable);
-            $droppable.css('position', 'absolute');
-            $droppable.css('left', value.left + 'px');
-            $droppable.css('top', value.top + 'px');
-            $droppable.css('width', value.width + 'px');
-            $droppable.css('height', value.height + 'px');
-            $droppable.find('.ipsWidgetDropMarker').css('marginTop', value.markerOffset);
-            $droppable.data('position', value.position);
-            $droppable.data('blockName', value.blockName);
-        });
+            //createPlaceholders();
+            setTimeout(prepareParagraphPlaceholders, 20);
+        }
 
-        //drop between paragraphs inside widget
-        var paragraphPlaceholders = new Array();
-        $.each($('.ipBlock .ipWidget').not('.ipbEmpty .ipWidget'), function (widgetKey, widget) {
-            var $widget = $(widget);
-            var widgetController = $widget.data('widgetController');
-            if (!widgetController) {
-                widgetController = {};
-            }
-            if (!widgetController.splitParts) {
-                widgetController.splitParts = function () {return new Array()};
-            }
-            var $paragraphs = widgetController.splitParts();
-            if($paragraphs.length <= 1) {
-                return;
-            }
-            $.each($paragraphs, function (paragraphKey, paragraph) {
-                var $paragraph = $(paragraph);
-
-                if (paragraphKey == 0) {
+        function prepareParagraphPlaceholders() {
+            //drop between paragraphs inside widget
+            var paragraphPlaceholders = new Array();
+            $.each($('.ipBlock .ipWidget').not('.ipbEmpty .ipWidget'), function (widgetKey, widget) {
+                var $widget = $(widget);
+                var widgetController = $widget.data('widgetController');
+                if (!widgetController) {
+                    widgetController = {};
+                }
+                if (!widgetController.splitParts) {
+                    widgetController.splitParts = function () {
+                        return new Array()
+                    };
+                }
+                var $paragraphs = widgetController.splitParts();
+                if ($paragraphs.length <= 1) {
                     return;
                 }
-                var $prevParagraph = $paragraphs.eq(paragraphKey - 1);
+                $.each($paragraphs, function (paragraphKey, paragraph) {
+                    var $paragraph = $(paragraph);
 
-                var newPlaceholder = {
-                    left: $widget.offset().left,
-                    top: $prevParagraph.offset().top + Math.round($prevParagraph.height() / 2),
-                    width: $widget.width(),
-                    widgetId: $widget.data('widgetid'),
-                    position: paragraphKey + 1
-                };
+                    if (paragraphKey == 0) {
+                        return;
+                    }
+                    var $prevParagraph = $paragraphs.eq(paragraphKey - 1);
 
-                newPlaceholder.height = $paragraph.offset().top + Math.round($paragraph.height() / 2) - newPlaceholder.top;
-                newPlaceholder.markerOffset = ($prevParagraph.offset().top + $prevParagraph.height() + $paragraph.offset().top) / 2 - newPlaceholder.top;
+                    var newPlaceholder = {
+                        left: $widget.offset().left,
+                        top: $prevParagraph.offset().top + Math.round($prevParagraph.height() / 2),
+                        width: $widget.width(),
+                        widgetId: $widget.data('widgetid'),
+                        position: paragraphKey + 1
+                    };
 
-                paragraphPlaceholders.push(newPlaceholder);
+                    newPlaceholder.height = $paragraph.offset().top + Math.round($paragraph.height() / 2) - newPlaceholder.top;
+                    newPlaceholder.markerOffset = ($prevParagraph.offset().top + $prevParagraph.height() + $paragraph.offset().top) / 2 - newPlaceholder.top;
+
+                    paragraphPlaceholders.push(newPlaceholder);
+                });
             });
-        });
 
-        $.each(paragraphPlaceholders, function (key, value) {
-            var $droppable = $('<div class="ipsWidgetDropPlaceholder ipAdminWidgetPlaceholderHorizontal"><div class="ipsWidgetDropMarker _marker"></div></div>');
-            $('body').append($droppable);
-            $droppable.css('position', 'absolute');
-            $droppable.css('left', value.left + 'px');
-            $droppable.css('top', value.top + 'px');
-            $droppable.css('width', value.width + 'px');
-            $droppable.css('height', value.height + 'px');
-            $droppable.find('.ipsWidgetDropMarker').css('marginTop', value.markerOffset);
-            $droppable.data('position', value.position);
-            $droppable.data('widgetId', value.widgetId);
-            $droppable.data('paragraph', 1);
-        });
+            $.each(paragraphPlaceholders, function (key, value) {
+                preparePlaceholder(value, 'ipAdminWidgetPlaceholderHorizontal', false, true, true)
+            });
 
-        $('.ipsWidgetDropPlaceholder').droppable({
-            accept: ".ipsAdminPanelWidgetButton, .ipWidget",
-            activeClass: "",
-            hoverClass: "_hover",
-            greedy: true,
-            over: function (event, ui) {
-                lastDroppable = $(this);
-                $(this).data('hover', true);
-            },
-            out: function (event, ui) {
-                $(this).data('hover', false);
-            },
-            drop: function (event, ui) {
-                //this method on jQuery-ui is buggy and fires fake drop events. So we better handle stop event on draggable. This is just for widget side drops.
+            createPlaceholders();
+            console.log('Placeholders prepared');
+        }
+
+        function preparePlaceholder(value, className, newCol, horz, paragraph) {
+            html += '<div class="ipsWidgetDropPlaceholder ' + className + '" style="position: absolute; left: ' + Math.round(value.left) + 'px; top: ' + Math.round(value.top) + 'px; height: ' + Math.round(value.height) + 'px; width: ' + Math.round(value.width) + 'px"';
+            if (value.widgetId) {
+                html += ' data-widget-id="' + value.widgetId + '"';
             }
-        });
-    }
+            if (value.blockName) {
+                html += ' data-block-name="' + value.blockName + '"';
+            }
+            if (value.leftOrRight) {
+                html += ' data-side="1" data-left-or-right="' + value.leftOrRight + '"';
+            }
+            if (newCol) {
+                html += ' data-new-col="1" data-position="' + value.position + '"';
+            } else if (paragraph) {
+                html += ' data-paragraph="1" data-position="' + value.position + '"';
+            } else if (horz) {
+                html += ' data-position="' + value.position + '"';
+            }
+            html += '><div class="ipsWidgetDropMarker _marker" style="';
+            if (horz) {
+                html += 'margin-top: ' + Math.round(value.markerOffset) + 'px';
+            } else {
+                html += 'height: ' + Math.round(value.height) + 'px; margin-left: ' + Math.round(value.width / 2) + 'px';
+            }
+            html += '"></div></div>';
+        }
+
+        function createPlaceholders() {
+
+            $('body').append(html);
+            html = '';
+
+            $('.ipsWidgetDropPlaceholder').droppable({
+                accept: ".ipsAdminPanelWidgetButton, .ipWidget",
+                activeClass: "",
+                hoverClass: "_hover",
+                greedy: true,
+                over: function (event, ui) {
+                    lastDroppable = $(this);
+                    $(this).data('hover', true);
+                },
+                out: function (event, ui) {
+                    $(this).data('hover', false);
+                },
+                drop: function (event, ui) {
+                    //this method on jQuery-ui is buggy and fires fake drop events. So we better handle stop event on draggable. This is just for widget side drops.
+                }
+            });
+
+            // To fix droppables added after drag started
+            $(draggingElement).trigger('scroll');
+            $(draggingElement).draggable('option', 'containment', $(draggingElement).draggable('option', 'containment'));
+
+
+        }
+
+    };
 
     var ipStopWidgetDrag = function (event, ui) {
         if (lastDroppable && lastDroppable.data('hover') && $(event.target).data('ipAdminWidgetButton')) {
             //new widget has been dropped
             var targetwidgetid = lastDroppable.data('widgetId');
             var leftOrRight = lastDroppable.data('leftOrRight');
-            var widgetName = $(this).data('ipAdminWidgetButton').name;
+            var widgetName = $(event.target).data('ipAdminWidgetButton').name;
             var side = lastDroppable.data('side');
             var newCol = lastDroppable.data('newCol');
             var blockName = lastDroppable.data('blockName');
